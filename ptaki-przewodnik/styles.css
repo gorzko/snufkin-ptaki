@@ -1430,3 +1430,14 @@ body {
     display: none !important;
   }
 }
+
+.version-tag {
+  display: block;
+  font-size: 8px;
+  color: var(--muted, #aaa);
+  text-align: right;
+  padding: 2px 4px 0;
+  opacity: 0.6;
+  font-family: monospace;
+  user-select: none;
+}
