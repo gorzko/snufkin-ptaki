@@ -1091,7 +1091,7 @@ body {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 80px;
-  background: linear-gradient(to bottom, transparent, var(--cream));
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.35));
   pointer-events: none;
 }
 
@@ -1099,7 +1099,7 @@ body {
   position: absolute;
   bottom: 9px; right: 10px;
   font-size: clamp(8px,1.8vw,9px);
-  color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.75);
   text-shadow: 0 1px 4px rgba(0,0,0,0.6);
   z-index: 5;
 }
