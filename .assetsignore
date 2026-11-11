@@ -15,5 +15,6 @@ mockups
 node_modules
 wrangler.jsonc
 .assetsignore
+worker.js
 .gitignore
 .git/

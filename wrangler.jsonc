@@ -1,9 +1,11 @@
 {
   "name": "ptaki",
   "compatibility_date": "2026-11-01",
+  "main": "worker.js",
   "assets": {
     "directory": "./",
-    "not_found_handling": "none"
+    "not_found_handling": "none",
+    "run_worker_first": true
   },
   "previews": {}
 }
