@@ -107,6 +107,9 @@
   .pill[aria-pressed="true"] { color: var(--moss); border-bottom-color: var(--moss); }
   .pill .n { color: var(--faint); font-size: 0.75rem; margin-left: 3px; }
   .pill.zero { opacity: 0.45; }
+  /* compact expand/collapse-all toggle at the end of the grouping bar */
+  .mini { margin-left: auto; background: none; border: 0; cursor: pointer; font: 400 0.75rem var(--sans); color: var(--faint); padding: 1px 0; letter-spacing: 0.02em; }
+  .mini:hover { color: var(--moss); text-decoration: underline; text-underline-offset: 3px; }
   .chip { font-size: 0.85rem; color: var(--muted); display: inline-flex; align-items: baseline; gap: 5px; }
   .chip[aria-pressed="false"] { opacity: 0.4; }
   .chip .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; transform: translateY(-1px); }
@@ -168,7 +171,6 @@
   .pin span { color: var(--faint); font-size: 0.7rem; }
 
   /* --- map view (Leaflet, lazy-loaded; tiles CARTO Positron to match the paper look) --- */
-  .map-pills { margin: 2px 0 10px; }
   .ref-pin { filter: drop-shadow(0 1px 1px rgba(51, 50, 42, 0.25)); }
   .mapbox { height: clamp(320px, 58vh, 520px); border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; margin: 14px 0 4px; background: var(--surface); }
   .map-empty { display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--muted); font-family: var(--serif); font-style: italic; padding: 0 16px; }
@@ -278,6 +280,7 @@
         st.types = v.types || st.types;
         if (v.grup === "lokalizacje" || v.grup === "gatunki" || v.grup === "mapa") st.grup = v.grup;
         if (v.sortLoc === "dist") st.sortLoc = "dist";
+        if (v.sortLoc === "alpha") st.sortLoc = "alpha";
         if (v.sortSp === "count") st.sortSp = "count";
         if (typeof v.km === "number" && v.km >= 5 && v.km <= 150) st.km = v.km;
         if (typeof v.a === "number" && typeof v.b === "number" && v.a >= 0 && v.a <= 6 && v.b >= 0 && v.b <= 6) { st.a = v.a; st.b = v.b; }
@@ -392,18 +395,35 @@
     button(gb, "pill", "wg gatunków", null, st.grup === "gatunki", function () { st.grup = "gatunki"; save(); draw(); });
     button(gb, "pill", "wg lokalizacji", null, st.grup === "lokalizacje", function () { st.grup = "lokalizacje"; save(); draw(); });
     button(gb, "pill", "mapa", null, st.grup === "mapa", function () { st.grup = "mapa"; save(); draw(); });
-    // locations view: distance sorting from the region's reference point
-    // (settings "Punkt" → region p in the data, format "szer,dł")
-    if (st.grup === "lokalizacje" && data.regions.some(function (r) { return parsePoint(r.p); })) {
+    // locations view: sort alphabetically, by observation count (default) or by
+    // distance from the region's reference point (settings "Punkt" → region p,
+    // format "szer,dł"; the distance pill needs at least one region with a point)
+    if (st.grup === "lokalizacje") {
       gb.appendChild(mk("span", "range-cap", "sortowanie"));
-      button(gb, "pill", "wg liczby obserwacji", null, st.sortLoc !== "dist", function () { st.sortLoc = ""; save(); draw(); });
-      button(gb, "pill", "wg odległości", null, st.sortLoc === "dist", function () { st.sortLoc = "dist"; save(); draw(); });
+      button(gb, "pill", "alfabetycznie", null, st.sortLoc === "alpha", function () { st.sortLoc = "alpha"; save(); draw(); });
+      button(gb, "pill", "obserwacje", null, st.sortLoc !== "alpha" && st.sortLoc !== "dist", function () { st.sortLoc = ""; save(); draw(); });
+      if (data.regions.some(function (r) { return parsePoint(r.p); }))
+        button(gb, "pill", "odległość", null, st.sortLoc === "dist", function () { st.sortLoc = "dist"; save(); draw(); });
     }
     // species view: alphabetical (default) or by observation count
     if (st.grup === "gatunki") {
       gb.appendChild(mk("span", "range-cap", "sortowanie"));
       button(gb, "pill", "alfabetycznie", null, st.sortSp !== "count", function () { st.sortSp = ""; save(); draw(); });
-      button(gb, "pill", "wg liczby obserwacji", null, st.sortSp === "count", function () { st.sortSp = "count"; save(); draw(); });
+      button(gb, "pill", "obserwacje", null, st.sortSp === "count", function () { st.sortSp = "count"; save(); draw(); });
+    }
+    // compact expand/collapse-all toggle for the collapsible blocks below
+    // (species and location lists are <details> collapsed by default)
+    if (st.grup !== "mapa") {
+      var mini = mk("button", "mini");
+      mini.type = "button";
+      mini.textContent = "rozwiń wszystko";
+      mini.onclick = function () {
+        var all = Array.prototype.slice.call(el("out").querySelectorAll("details"));
+        var open = all.length > 0 && all.every(function (d) { return d.open; });
+        all.forEach(function (d) { d.open = !open; });
+        mini.textContent = open ? "rozwiń wszystko" : "zwiń wszystko";
+      };
+      gb.appendChild(mini);
     }
     var ty = el("types"); ty.textContent = "";
     TYPES.forEach(function (t) {
@@ -553,6 +573,7 @@
         var da = a.dist === null ? Infinity : a.dist, db = b.dist === null ? Infinity : b.dist;
         return da - db || a.name.localeCompare(b.name, "pl");
       }
+      if (st.sortLoc === "alpha") return a.name.localeCompare(b.name, "pl");
       return b.nObs - a.nObs || a.name.localeCompare(b.name, "pl");
     });
     return locs;
@@ -725,17 +746,6 @@
     h.appendChild(mk("span", "cnt", cnt));
     sec.appendChild(h);
     sec.appendChild(mk("hr", "region-hr"));
-    // region switcher (map mode): synced with the top region filter; clicking
-    // the active region pill returns to the all-regions view
-    var regRow = mk("div", "row map-pills");
-    button(regRow, "pill", "Wszystkie", null, st.region === "", function () { st.region = ""; save(); draw(); });
-    per.forEach(function (row) {
-      var c = 0; agg.locs.forEach(function (l) { if (l.region === row[0].n) c += l.obs; });
-      button(regRow, "pill" + (c === 0 ? " zero" : ""), row[0].n, c, st.region === row[0].n, function () {
-        st.region = st.region === row[0].n ? "" : row[0].n; save(); draw();
-      });
-    });
-    sec.appendChild(regRow);
     // reference points of the visible regions (region p, format "szer,dł")
     var points = [];
     data.regions.forEach(function (r) {
@@ -815,4 +825,3 @@
 </script>
 </body>
 </html>
-
